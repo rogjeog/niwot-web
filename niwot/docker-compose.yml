@@ -1,0 +1,90 @@
+version: '3.9'
+
+services:
+  mysql:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password --innodb-buffer-pool-size=256M
+    restart: unless-stopped
+    environment:
+      CORS_CREDENTIALS: "true"
+      CORS_ORIGIN: "https://niwot.btsinfo.nc"
+      MYSQL_ROOT_PASSWORD: "Niwot_DB_root_529OuYbG9JkjZyU0!"
+      MYSQL_DATABASE: niwotdb
+      MYSQL_USER: niwot
+      MYSQL_PASSWORD: "Niwot_DB_user_SWPOnX1kjBbGjhHP!"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - niwot_net
+
+  adminer:
+    image: adminer:4.8.1
+    restart: unless-stopped
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql
+    ports:
+      - "8080:8080"
+    networks:
+      - niwot_net
+
+  api:
+    build: ./api
+    restart: unless-stopped
+    depends_on:
+      - mysql
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: "mysql://niwot:Niwot_DB_user_SWPOnX1kjBbGjhHP!@mysql:3306/niwotdb"
+      JWT_SECRET: "tevyKKfzuHHsMsWP1PL4jQNRH1JhIjB1gIcPpGNcdTbQ2n4SKMQyNh09GjWVtXGk"
+      COOKIE_DOMAIN: ".niwot.btsinfo.nc"
+      PUBLIC_ORIGIN: "https://niwot.btsinfo.nc"
+      API_ORIGIN: "https://api-game.niwot.btsinfo.nc"
+      UPLOAD_DIR: "/app/uploads"
+      DEFAULT_ADMIN_USERNAME: "admin"
+      DEFAULT_ADMIN_PASSWORD: "NiwotAdmin2025!"
+      DEFAULT_ADMIN_AVATAR: ""
+    volumes:
+      - api_uploads:/app/uploads
+    networks:
+      - niwot_net
+
+  web:
+    build: ./web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_BASE: "https://api-game.niwot.btsinfo.nc"
+      NEXT_PUBLIC_WS_BASE: "wss://api-game.niwot.btsinfo.nc"
+    depends_on:
+      - api
+    networks:
+      - niwot_net
+
+  # Nginx Proxy Manager WITHOUT external DB (uses internal SQLite)
+  npm:
+    image: jc21/nginx-proxy-manager:latest
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "81:81"
+      - "443:443"
+    environment:
+      TZ: Pacific/Noumea
+      INITIAL_ADMIN_EMAIL: "admin@niwot.btsinfo.nc"
+      INITIAL_ADMIN_PASSWORD: "NPM_Admin_wH2FsGMAUHIA!"
+    volumes:
+      - npm_data:/data
+      - npm_letsencrypt:/etc/letsencrypt
+    networks:
+      - niwot_net
+
+networks:
+  niwot_net:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  api_uploads:
+  npm_data:
+  npm_letsencrypt:

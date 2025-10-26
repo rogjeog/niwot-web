@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  user
+  admin
+}
+
+enum QuestionStatus {
+  awaiting_approval
+  approved
+  refused
+}
+
+enum QuestionType {
+  CITATION
+  IMAGE
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  username     String    @unique
+  password     String
+  role         Role      @default(user)
+  profileImage String?
+  wins         Int       @default(0)
+  createdAt    DateTime  @default(now())
+  questions    Question[]
+  roomMembers  RoomMember[]
+}
+
+model Category {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
+  questions Question[]
+}
+
+model Question {
+  id           Int             @id @default(autoincrement())
+  text         String
+  type         QuestionType
+  citationText String?
+  imagePath    String?
+  answer       String
+  alternatives Json?
+  explanation  String
+  status       QuestionStatus @default(awaiting_approval)
+  createdById  Int
+  createdBy    User           @relation(fields: [createdById], references: [id])
+  categories   Category[]
+  createdAt    DateTime       @default(now())
+}
+
+model Room {
+  code              String       @id @db.VarChar(6)
+  name              String
+  hostId            Int
+  visibility        String       // "public" | "private"
+  maxPlayers        Int
+  excludedUsernames Json         // string[]
+  categories        Json         // number[]
+  answerTimeSec     Int
+  targetPoints      Int
+  pointMode         String       // "degressive" | "fixed"
+  showProposals     Boolean
+  createdAt         DateTime     @default(now())
+  members           RoomMember[]
+}
+
+model RoomMember {
+  id        Int    @id @default(autoincrement())
+  roomCode  String
+  userId    Int
+  ready     Boolean @default(false)
+  isHost    Boolean @default(false)
+
+  room      Room   @relation(fields: [roomCode], references: [code])
+  user      User   @relation(fields: [userId], references: [id])
+
+  @@unique([roomCode, userId])
+}
